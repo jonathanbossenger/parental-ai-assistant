@@ -8,15 +8,20 @@ const fixtures = resolve(dirname(fileURLToPath(import.meta.url)), "fixtures");
 export function createMockServer(directory = fixtures) {
   return createServer(async (request, response) => {
     response.setHeader("Access-Control-Allow-Origin", "*");
-    response.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    response.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
+    response.setHeader("Access-Control-Allow-Headers", "Content-Type");
     response.setHeader("Cache-Control", "no-store");
+
+    if (request.method === "POST") {
+      request.resume();
+    }
 
     if (request.method === "OPTIONS") {
       response.writeHead(204).end();
       return;
     }
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      response.setHeader("Allow", "GET, HEAD, OPTIONS");
+    if (request.method !== "GET" && request.method !== "HEAD" && request.method !== "POST") {
+      response.setHeader("Allow", "GET, HEAD, POST, OPTIONS");
       response.writeHead(405).end();
       return;
     }
@@ -29,7 +34,8 @@ export function createMockServer(directory = fixtures) {
 
     try {
       const root = await realpath(directory);
-      const file = await realpath(resolve(root, `${path.slice(5)}.json`));
+      const suffix = request.method === "POST" ? ".post.json" : ".json";
+      const file = await realpath(resolve(root, `${path.slice(5)}${suffix}`));
       const relativePath = relative(root, file);
       if (isAbsolute(relativePath) || relativePath === ".." || relativePath.startsWith(`..${sep}`) || relativePath === "") {
         response.writeHead(404).end();
